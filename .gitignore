@@ -1,0 +1,58 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ---- Virtual environments ----
+.venv/
+venv/
+ENV/
+env/
+
+# ---- Distribution / build ----
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+
+# ---- Poetry ----
+# (poetry.lock SHOULD be committed; do not ignore it)
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- OS ----
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ---- Environment variables / secrets ----
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+api-keys.txt
+avouch-keys-temp.txt
+
+# ---- Logs and caches ----
+*.log
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---- Avouch project-specific ----
+# Attack transcripts and results - these can contain sensitive prompts
+runs/
+results/
+traces/
+*.sqlite
+*.db
