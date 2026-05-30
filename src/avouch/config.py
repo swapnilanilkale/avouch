@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = Field(
         ..., description="API key for the OpenRouter provider."
     )
+    cerebras_api_key: str = Field(..., description="API key for the Cerebras provider.")
 
     log_level: str = Field(
         default="INFO",
