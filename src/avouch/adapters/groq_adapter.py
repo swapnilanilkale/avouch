@@ -4,9 +4,10 @@ Wraps the Groq SDK so that Groq-hosted models can be used through Avouch's
 standard TargetAdapter interface.
 """
 
-from groq import APIError, Groq
+from groq import APIError, Groq, RateLimitError
 
 from avouch.adapters.base import AdapterError, LLMResponse, TargetAdapter
+from avouch.adapters.retry import with_backoff
 from avouch.config import get_settings
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
@@ -43,12 +44,17 @@ class GroqAdapter(TargetAdapter):
         Raises:
             AdapterError: If the Groq API call fails.
         """
-        try:
-            completion = self._client.chat.completions.create(
+
+        @with_backoff((RateLimitError,))
+        def _call():
+            return self._client.chat.completions.create(
                 model=self._model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
             )
+
+        try:
+            completion = _call()
         except APIError as exc:
             raise AdapterError(f"Groq API call failed: {exc}") from exc
 

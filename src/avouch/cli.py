@@ -11,6 +11,7 @@ from avouch.adapters.registry import available_providers, get_adapter
 from avouch.agents.objectives import OBJECTIVE_LIBRARY, get_objective
 from avouch.agents.runner import run_attack
 from avouch.agents.types import Outcome
+from avouch.orchestrator.run import run_adaptive_attack
 
 app = typer.Typer(
     name="avouch",
@@ -112,8 +113,15 @@ def attack(
         "-n",
         help="Maximum number of attack techniques to try.",
     ),
+    adaptive: bool = typer.Option(
+        False,
+        "--adaptive",
+        "-a",
+        help="Use the adaptive LangGraph orchestrator with a critic loop.",
+    ),
 ) -> None:
     """Run a red-teaming attack and print a scorecard."""
+
     try:
         target_adapter = get_adapter(target)
         judge_adapter = get_adapter(judge)
@@ -122,18 +130,28 @@ def attack(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
+    mode = "adaptive (LangGraph orchestrator)" if adaptive else "linear"
     typer.echo(f"Target    : {target_adapter.name}")
     typer.echo(f"Judge     : {judge_adapter.name}")
     typer.echo(f"Objective : {obj.description}")
+    typer.echo(f"Mode      : {mode}")
     typer.echo("Running attack (this makes several model calls)...")
     typer.echo("")
 
-    result = run_attack(
-        target_adapter,
-        judge_adapter,
-        obj,
-        max_attempts=max_attempts,
-    )
+    if adaptive:
+        result = run_adaptive_attack(
+            target_adapter,
+            judge_adapter,
+            obj,
+            max_attempts=max_attempts,
+        )
+    else:
+        result = run_attack(
+            target_adapter,
+            judge_adapter,
+            obj,
+            max_attempts=max_attempts,
+        )
 
     typer.echo("=" * 60)
     typer.echo("SCORECARD")
