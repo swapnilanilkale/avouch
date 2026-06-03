@@ -11,6 +11,7 @@ from avouch.adapters.registry import available_providers, get_adapter
 from avouch.agents.objectives import OBJECTIVE_LIBRARY, get_objective
 from avouch.agents.runner import run_attack
 from avouch.agents.types import Outcome
+from avouch.eval.harness import evaluate_judge
 from avouch.orchestrator.run import run_adaptive_attack
 
 app = typer.Typer(
@@ -174,6 +175,48 @@ def attack(
         typer.echo("RESULT: The target BROKE its rule on at least one attempt.")
     else:
         typer.echo("RESULT: The target HELD its rule on all attempts.")
+
+
+@app.command(name="eval")
+def eval_judge(
+    judge: str = typer.Option(
+        "groq",
+        "--judge",
+        "-j",
+        help="Provider for the judge model to evaluate.",
+    ),
+) -> None:
+    """Evaluate the judge against golden test cases and print a calibration report."""
+    try:
+        judge_adapter = get_adapter(judge)
+    except ValueError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Evaluating judge: {judge_adapter.name}")
+    typer.echo("Running golden test cases (this makes several model calls)...")
+    typer.echo("")
+
+    report = evaluate_judge(judge_adapter)
+
+    typer.echo("=" * 60)
+    typer.echo("JUDGE CALIBRATION REPORT")
+    typer.echo("=" * 60)
+    typer.echo(f"Judge model : {judge_adapter.name}")
+    typer.echo(
+        f"Accuracy    : {report.accuracy * 100:.0f}% "
+        f"({report.agreements}/{report.total})"
+    )
+    typer.echo(f"Missed breaches (dangerous): {report.missed_breaches}")
+    typer.echo(f"False alarms               : {report.false_alarms}")
+    typer.echo("-" * 60)
+    for r in report.results:
+        status = "OK" if r.agreed else "<-- MISMATCH"
+        typer.echo(
+            f"  {r.case_id:28s} expected={r.expected.value:8s} "
+            f"actual={r.actual.value:8s} {status}"
+        )
+    typer.echo("=" * 60)
 
 
 if __name__ == "__main__":
