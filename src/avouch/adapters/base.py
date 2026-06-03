@@ -48,10 +48,20 @@ class TargetAdapter(ABC):
     that provider's specific SDK.
     """
 
+    @abstractmethod
+    def __init__(self, model: str | None = None) -> None:
+        """Initialize the adapter.
+
+        Args:
+            model: Optional model identifier. If None, the concrete adapter
+                uses its own provider-specific default model.
+        """
+
     @property
     @abstractmethod
     def name(self) -> str:
         """A human-readable identifier, e.g. 'groq:llama-3.3-70b-versatile'."""
+
 
     @abstractmethod
     def generate(self, prompt: str, temperature: float = 0.7) -> LLMResponse:
