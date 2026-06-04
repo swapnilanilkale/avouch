@@ -36,10 +36,13 @@ separating dangerous *missed breaches* from benign *false alarms*.
 ## Architecture
 Target Adapters (Groq · Cerebras · Gemini · OpenRouter)  ← one unified interface
 │
+
 Orchestrator (LangGraph state graph, critic loop)
 ┌────┴─────┐
+
 Attacker → Judge → Critic   →   Scorecard + saved results
 │
+
 Eval Harness (golden cases → calibration metrics)
 
 ## Quick start
