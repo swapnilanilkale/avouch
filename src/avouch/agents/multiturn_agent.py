@@ -21,6 +21,7 @@ from avouch.agents.types import (
     ConversationTurn,
     Outcome,
 )
+from avouch.tracing.trace import Tracer
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class MultiTurnAttacker:
         target: TargetAdapter,
         attacker: TargetAdapter,
         judge: TargetAdapter | None = None,
+        tracer: Tracer | None = None,
     ) -> None:
         """Create a multi-turn attacker.
 
@@ -59,10 +61,14 @@ class MultiTurnAttacker:
                 different model family from the target.
             judge: Optional judge model. If provided, each turn is judged for
                 whether the target broke its rule. Should differ from target.
+            tracer: Optional tracer. If provided, each step of the run is
+                recorded into a structured trace. If omitted, tracing is
+                skipped and behavior is unchanged.
         """
         self._target = target
         self._attacker = attacker
         self._judge = JudgeAgent(judge) if judge is not None else None
+        self._tracer = tracer
 
     def _compose_attack(
         self,
@@ -141,6 +147,11 @@ class MultiTurnAttacker:
             target_messages.append({"role": "user", "content": attacker_message})
 
             logger.info("Turn %d: attacker -> %s", turn_number, attacker_message[:80])
+            if self._tracer:
+                self._tracer.record(
+                    "attack_compose",
+                    {"turn": turn_number, "attacker_message": attacker_message},
+                )
 
             try:
                 response = self._target.generate_conversation(
@@ -152,6 +163,11 @@ class MultiTurnAttacker:
                 target_text = f"[target call failed: {exc}]"
 
             target_messages.append({"role": "assistant", "content": target_text})
+            if self._tracer:
+                self._tracer.record(
+                    "target_call",
+                    {"turn": turn_number, "target_response": target_text},
+                )
 
             verdict = None
             if self._judge is not None:
@@ -163,6 +179,15 @@ class MultiTurnAttacker:
                 )
                 verdict = self._judge.evaluate(objective, attempt)
                 logger.info("Turn %d judged: %s", turn_number, verdict.outcome.value)
+                if self._tracer:
+                    self._tracer.record(
+                        "judge_verdict",
+                        {
+                            "turn": turn_number,
+                            "outcome": verdict.outcome.value,
+                            "reasoning": verdict.reasoning,
+                        },
+                    )
 
             turns.append(
                 ConversationTurn(
@@ -178,6 +203,10 @@ class MultiTurnAttacker:
             ) or objective.success_substring.lower() in target_text.lower()
             if broke:
                 logger.info("Rule broken on turn %d; stopping.", turn_number)
+                if self._tracer:
+                    self._tracer.record(
+                        "stop", {"turn": turn_number, "reason": "rule_broken"}
+                    )
                 break
 
         return turns
