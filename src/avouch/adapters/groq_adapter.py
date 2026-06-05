@@ -69,3 +69,48 @@ class GroqAdapter(TargetAdapter):
             completion_tokens=usage.completion_tokens if usage else None,
             raw=completion,
         )
+
+    def generate_conversation(
+        self, messages: list[dict[str, str]], temperature: float = 0.7
+    ) -> LLMResponse:
+        """Send a full message history to Groq as a native conversation.
+
+        Overrides the base fallback: the messages are passed directly to the
+        chat completions API, so the model responds with true multi-turn
+        context rather than a flattened prompt.
+
+        Args:
+            messages: Conversation history as role/content dicts.
+            temperature: Sampling temperature.
+
+        Returns:
+            An LLMResponse with the model's reply and metadata.
+
+        Raises:
+            AdapterError: If the Groq API call fails.
+        """
+
+        @with_backoff((RateLimitError,))
+        def _call():
+            return self._client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=temperature,
+            )
+
+        try:
+            completion = _call()
+        except APIError as exc:
+            raise AdapterError(f"Groq API call failed: {exc}") from exc
+
+        choice = completion.choices[0]
+        usage = completion.usage
+
+        return LLMResponse(
+            text=choice.message.content or "",
+            model=self._model,
+            provider="groq",
+            prompt_tokens=usage.prompt_tokens if usage else None,
+            completion_tokens=usage.completion_tokens if usage else None,
+            raw=completion,
+        )

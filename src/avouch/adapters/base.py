@@ -62,7 +62,6 @@ class TargetAdapter(ABC):
     def name(self) -> str:
         """A human-readable identifier, e.g. 'groq:llama-3.3-70b-versatile'."""
 
-
     @abstractmethod
     def generate(self, prompt: str, temperature: float = 0.7) -> LLMResponse:
         """Send a single prompt to the target model and return its response.
@@ -73,6 +72,28 @@ class TargetAdapter(ABC):
 
         Returns:
             An LLMResponse containing the generated text and metadata.
+
+        Raises:
+            AdapterError: If the provider call fails for any reason.
+        """
+
+    def generate_conversation(
+        self, messages: list[dict[str, str]], temperature: float = 0.7
+    ) -> LLMResponse:
+        """Send a multi-message conversation and return the model's reply.
+
+        Unlike generate(), which sends a single prompt, this sends a full
+        message history (a list of {"role": ..., "content": ...} dicts) so the
+        model responds in the context of an ongoing dialogue. This supports
+        multi-turn red-teaming, where adversarial pressure builds across turns.
+
+        Args:
+            messages: Conversation history as a list of role/content dicts.
+                Roles are "system", "user", or "assistant".
+            temperature: Sampling temperature.
+
+        Returns:
+            An LLMResponse containing the model's reply and metadata.
 
         Raises:
             AdapterError: If the provider call fails for any reason.

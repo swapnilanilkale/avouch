@@ -100,3 +100,20 @@ class RunResult:
     attempts: list[AttackAttempt] = field(default_factory=list)
     verdicts: list[Verdict] = field(default_factory=list)
     succeeded: bool = False
+
+
+@dataclass
+class ConversationTurn:
+    """One turn of a multi-turn red-teaming conversation.
+
+    Attributes:
+        turn_number: 1-based index of this turn in the conversation.
+        attacker_message: The adversarial message the attacker sent this turn.
+        target_response: The target model's reply this turn.
+        verdict: The judge's ruling on this turn, if judged.
+    """
+
+    turn_number: int
+    attacker_message: str
+    target_response: str
+    verdict: Verdict | None = None
