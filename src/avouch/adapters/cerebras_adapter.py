@@ -4,11 +4,17 @@ Cerebras exposes an OpenAI-compatible API, so this adapter uses the standard
 OpenAI SDK pointed at the Cerebras endpoint.
 """
 
+from typing import TYPE_CHECKING, cast
+
 from openai import OpenAI, OpenAIError, RateLimitError
 
 from avouch.adapters.base import AdapterError, LLMResponse, TargetAdapter
 from avouch.adapters.retry import with_backoff
 from avouch.config import get_settings
+
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam
+
 
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 DEFAULT_CEREBRAS_MODEL = "gpt-oss-120b"
@@ -44,6 +50,7 @@ class CerebrasAdapter(TargetAdapter):
 
         Returns:
             An LLMResponse with the generated text and metadata.
+
 
         Raises:
             AdapterError: If the Cerebras API call fails.
@@ -94,11 +101,13 @@ class CerebrasAdapter(TargetAdapter):
             AdapterError: If the Cerebras API call fails.
         """
 
+        typed_messages = cast("list[ChatCompletionMessageParam]", messages)
+
         @with_backoff((RateLimitError,))
         def _call():
             return self._client.chat.completions.create(
                 model=self._model,
-                messages=messages,
+                messages=typed_messages,
                 temperature=temperature,
             )
 
