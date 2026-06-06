@@ -93,7 +93,7 @@ Every attack targets a harmless proxy objective: the target is given a benign ru
 
 ### 3.5 Interfaces
 
-The framework is driven from a command line and a browser interface, both thin over the same engine. The command line covers single-prompt queries, attacks in linear or adaptive mode, judge calibration, and inventory of providers and objectives. The browser interface, built with Streamlit, exposes the same operations interactively and renders each attempt's prompt, response, and verdict alongside the judge-calibration report. Neither interface contains logic of its own; both exist to make the engine usable.
+The framework is driven from a command line and a browser interface, both thin over the same engine. The command line covers single-prompt queries, attacks in linear or adaptive mode, judge calibration, and inventory of providers and objectives. The browser interface, built with Streamlit, exposes the same operations interactively and renders each attempt's prompt, response, and verdict alongside the judge-calibration report. A third interface exposes a subset of the engine's operations as Model Context Protocol (MCP) tools over a local stdio server, so an MCP-compatible client can invoke them; the tools are verified at the dispatch level, with live client integration left as a configuration step. Neither interface contains logic of its own; all exist to make the engine usable.
 
 ### 3.6 Multi-turn attack
 
@@ -184,9 +184,9 @@ Several extensions would deepen the framework along the axes its current limitat
 
 **Larger evaluation sets and broader coverage.** The judge calibration set (26 cases), the benchmark sample size (ten runs per cell), and the probe sets (five and three cases) would all need to grow substantially to support strong claims about specific models. Additional attacker types and a wider model grid would extend coverage further.
 
-**Deeper observability and integration.** The structured tracing layer could be exported to an external observability backend (e.g. OpenTelemetry / Arize Phoenix), and the framework's tools could be exposed through the Model Context Protocol for use by other systems.
+**Deeper observability and integration.** The structured tracing layer could be exported to an external observability backend (e.g. OpenTelemetry / Arize Phoenix). The framework already exposes its tools over the Model Context Protocol; completing live client integration and broadening the exposed tool set would extend this further.
 
-**Taxonomy alignment.** Mapping Avouch's objectives and findings onto published evaluation frameworks — the categories used by national safety institutes, and the risk taxonomy of the NIST AI Risk Management Framework — would situate its results within the shared vocabulary the field is converging on.
+**Taxonomy alignment.** A companion document (`docs/taxonomy_alignment.md`) maps Avouch's components to the Measure function of the NIST AI Risk Management Framework and to the methodology of the UK AI Security Institute's Inspect framework, stating explicitly what the framework does and does not cover. Extending this mapping as the framework grows, and as these published frameworks evolve, remains ongoing work.
 
 We note that more conventional engineering extensions — concurrent execution, a persistent results store and API, authentication and access control — would be required to operate Avouch at scale, but these concern productionization rather than the evaluation methodology that is the framework's contribution.
 
