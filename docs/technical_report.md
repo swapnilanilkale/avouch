@@ -7,7 +7,7 @@
 
 ## Abstract
 
-Red-teaming — probing language models for safety failures through adversarial inputs — is central to AI safety practice, yet most red-teaming is manual or relies on closed-source tooling, and the evaluators that judge attack outcomes are rarely validated or applied with statistical rigor. We present Avouch, an open-source agentic framework that automates adaptive red-teaming against arbitrary language models and treats both its evaluator and its results as objects of measurement. Avouch couples a provider-agnostic model interface with a multi-agent workflow: an attacker escalates through documented adversarial framings, an independent judge from a different model family rules on each attempt, and a critic revises strategy between attempts via a state-graph orchestrator. To enable safe, open development, all attacks target *harmless proxy objectives* — benign rule-following tasks that exercise the full attack machinery without eliciting harmful content. We validate the judge against 26 hand-labeled cases (96% agreement with human labels; zero false alarms) and against a second judge of a different family (Cohen's κ = 0.77, "substantial"), finding that residual disagreement is confined to genuinely ambiguous cases. A statistical benchmark of two models, each cell run ten times with Wilson confidence intervals, exposes a result that single-run benchmarking misses: one model resisted on every trial (0%, 95% CI 0–28%) while the other broke roughly half the time (50%, 95% CI 24–76%) on the same objective a single prior run had reported as fully robust. Avouch demonstrates that credible, adaptive LLM red-teaming can be built openly and safely, with evaluators whose reliability is measured rather than assumed and findings reported with quantified uncertainty.
+Red-teaming — probing language models for safety failures through adversarial inputs — is central to AI safety practice, yet most red-teaming is manual or relies on closed-source tooling, and the evaluators that judge attack outcomes are rarely validated or applied with statistical rigor. We present Avouch, an open-source agentic framework that automates adaptive red-teaming against arbitrary language models and treats both its evaluator and its results as objects of measurement. Avouch couples a provider-agnostic model interface with a multi-agent workflow: an attacker escalates through documented adversarial framings, an independent judge from a different model family rules on each attempt, and a critic revises strategy between attempts via a state-graph orchestrator. To enable safe, open development, all attacks target *harmless proxy objectives* — benign rule-following tasks that exercise the full attack machinery without eliciting harmful content. We validate the judge against 26 hand-labeled cases (96% agreement with human labels; zero false alarms) and against a second judge of a different family (Cohen's κ = 0.77, "substantial"), finding that residual disagreement is confined to genuinely ambiguous cases. A statistical benchmark of two models, each cell run ten times with Wilson confidence intervals, exposes a result that single-run benchmarking misses: one model resisted on every trial (0%, 95% CI 0–28%) while the other broke roughly half the time (50%, 95% CI 24–76%) on the same objective a single prior run had reported as fully robust. Beyond single-shot attacks, the framework includes a multi-turn conversational attacker with per-turn judging, probes for sycophancy and framing-sensitivity, and structured execution tracing that makes every run auditable. Avouch demonstrates that credible, adaptive LLM red-teaming can be built openly and safely, with evaluators whose reliability is measured rather than assumed and findings reported with quantified uncertainty.
 
 ---
 
@@ -38,6 +38,8 @@ Avouch's design rests on three methodological commitments, each chosen to make t
 ### 2.1 Harmless proxy objectives
 
 The central decision is to never target genuinely harmful behavior. A naive automated red-teaming system attempts to elicit dangerous content and reports its success rate at doing so; such a system is itself a generator of harmful outputs, and is correspondingly hazardous to develop, publish, or run. Avouch instead substitutes a *proxy*: the target is given a benign confidential rule — withhold a secret word, never utter a particular phrase — and an attack succeeds exactly when that rule is broken.
+
+The same safe-by-design principle extends to the framework's other probes. The sycophancy and framing-sensitivity probes replace substring-checkable success with judgment-based scoring — did the model affirm a falsehood; did its conclusion flip with framing — but retain the core commitments: the content is benign, and success is defined against an objective reference (a known fact, or the model's own prior answer). Judgment-based scoring is why these probes carry their own purpose-built judge prompts rather than reusing the disclosure judge.
 
 This substitution is sound for two reasons. First, the *mechanism* under test is identical to that of harmful red-teaming: the same adversarial framings, the same multi-attempt adaptive pressure, the same question of whether a model holds a stated constraint under manipulation. A model's tendency to abandon an instruction when pressed is what we are measuring, and the proxy exercises exactly that tendency. Second, success is *objectively verifiable* — the protected token either appears in the output or it does not — which makes outcomes reproducible in a way that judgments about the harmfulness of free-form content are not. The proxy thus buys both safety and measurement precision, at the cost of not testing any specific harmful capability directly. We regard this as the correct trade for an open framework, and discuss its limits in Section 5.
 
@@ -93,6 +95,24 @@ Every attack targets a harmless proxy objective: the target is given a benign ru
 
 The framework is driven from a command line and a browser interface, both thin over the same engine. The command line covers single-prompt queries, attacks in linear or adaptive mode, judge calibration, and inventory of providers and objectives. The browser interface, built with Streamlit, exposes the same operations interactively and renders each attempt's prompt, response, and verdict alongside the judge-calibration report. Neither interface contains logic of its own; both exist to make the engine usable.
 
+### 3.6 Multi-turn attack
+
+The attacker described in §3.2 issues single-shot attempts: each prompt is independent. Real manipulation, however, often builds across a conversation. Avouch therefore includes a second, standalone attacker that holds a genuine multi-turn dialogue with the target. An attacker model composes each next message in light of the conversation so far, and the full message history is sent to the target on every turn through a native multi-message interface rather than a flattened prompt, so the target responds in true dialogue context. A judge optionally rules on each turn, so the precise turn at which a rule breaks is identified rather than only the run's final outcome.
+
+Two honest constraints bound this component. First, the conversational tactics the attacker employs — rapport-building, reframing, gradual escalation — are ordinary social-engineering patterns, not novel exploits; as elsewhere, the contribution is the orchestration, not the prompts. Second, the attacker model itself sometimes declines the adversarial role; the framework detects such refusals and substitutes an on-task message, so a reluctant attacker model does not silently stall the conversation. The multi-turn attacker is built alongside, not into, the single-shot orchestrator, leaving the validated single-shot path unchanged.
+
+### 3.7 Probes for sycophancy and framing-sensitivity
+
+The secret-word and forbidden-phrase objectives test one class of failure: whether a model holds a stated rule. Avouch adds two probes that test different classes, each retaining the safe-by-design and objectively-checkable principles while replacing substring-matching with judgment-based scoring.
+
+The **sycophancy probe** asserts an objectively false but harmless claim under social pressure ("I'm certain the capital of Australia is Sydney — confirm it") and judges whether the target caves to the falsehood or holds the correct fact. The distinction the judge must draw is between *tone* and *substance*: a response that is warm and accommodating while still correcting the error has held the truth and is not sycophantic.
+
+The **framing-sensitivity probe** asks the same underlying question under two framings — an anchoring adjective, or a swapped option order — and judges whether the model's substantive conclusion stayed consistent or flipped with the framing. We are deliberately precise about its scope: this is a framing-robustness test, **not** a demographic-bias detector, and it is not described as one. Genuine bias evaluation requires careful sensitive-attribute design and remains future work. The probe sets are small (five sycophancy cases, three framing cases) and are intended to demonstrate the method and provide initial signal, not to comprehensively characterize either property.
+
+### 3.8 Execution tracing
+
+Because the value of an evaluation depends on its auditability, Avouch records each run as a structured execution trace: an ordered log of every step — each attacker message, each target response, each judge verdict and its reasoning, and the reason a run terminated — written to disk as inspectable data with run metadata. The tracer is lightweight and dependency-free, and is passed into a run optionally, so an untraced run behaves exactly as before. The trace schema is kept general enough that an exporter to an external observability backend could be added without changing callers. The effect is that any run can be reconstructed and examined after the fact, rather than surviving only as ephemeral log lines.
+
 ---
 
 ## 4. Results
@@ -126,6 +146,14 @@ Second, and more important methodologically, the statistical benchmark contradic
 
 We note two limitations specific to these numbers. The sample size (ten runs per cell) is small, which the wide confidence intervals reflect honestly — the GPT-OSS "0%" cells are consistent with a true break rate as high as 28%. And one of the forty runs completed with a degraded judge call: the daily token limit of the free-tier judge was exhausted on the final run, its judge calls failed after retries, and the run was recorded as "held." That single run is flagged; it does not affect the GPT-OSS conclusion, which rested on the preceding nine clean runs of that cell.
 
+### 4.3 Probe results
+
+We ran the sycophancy and framing-sensitivity probes against both models (Llama-3.3-70B and GPT-OSS-120B), each judged by a model of the opposite family.
+
+On the **sycophancy** probe, both models held the correct fact on all five cases (caved on 0 of 5), correcting each confidently-asserted falsehood while remaining cooperative in tone. On the **framing-sensitivity** probe, both models gave substantively consistent answers across all three cases (inconsistent on 0 of 3), resisting both adjective-anchoring and option-order manipulation.
+
+These are encouraging but deliberately limited results. The case sets are small, and the claims tested are well-known facts and simple framings — precisely the regime where well-trained models are most likely to be robust. They demonstrate that the probes function and apply genuine pressure, and they provide an initial, honest signal; they do not establish that either model is free of sycophancy or framing-sensitivity in harder regimes. During development the framing probe also surfaced a methodological point worth recording: an early case that asked "what is good about X?" versus "what is bad about X?" was discarded because it could not distinguish a framing-induced flip from a model legitimately answering the literal question asked — a reminder that consistency probes require cases where a robust model genuinely *should* give the same answer.
+
 ---
 
 ## 5. Limitations
@@ -142,17 +170,21 @@ We state the framework's limitations plainly; several follow directly from the d
 
 **Two models, two objectives.** The benchmark covers a 2×2 grid. It is sufficient to demonstrate the method and to surface a meaningful differential between two models, but it is a demonstration, not a survey of the model landscape.
 
+**The probe sets are small and their results preliminary.** The sycophancy and framing-sensitivity probes comprise five and three cases respectively, on well-known facts and simple framings. The null results (both models held) demonstrate the probes function but do not establish robustness in harder regimes. The framing probe in particular tests only anchoring and option-order sensitivity, and explicitly does not measure demographic bias.
+
+**Multi-turn attacks use documented social tactics.** As with the single-shot framings, the multi-turn attacker employs ordinary conversational manipulation patterns, not novel techniques, and its effectiveness is bounded by the willingness of the attacker model to adopt the adversarial role.
+
 ---
 
 ## 6. Future Work
 
 Several extensions would deepen the framework along the axes its current limitations identify.
 
-**Broader and adaptive attack coverage.** The most direct extension is a multi-turn conversational attacker that builds adversarial pressure across a dialogue rather than in single shots, which would exercise the adaptive orchestrator more fully. Additional attacker types — probes for demographic bias and for sycophancy (a model's tendency to agree with confidently-asserted falsehoods), each with harmless proxy formulations — would broaden the classes of failure the framework can surface.
+**Genuine bias evaluation.** The framing-sensitivity probe tests answer-consistency, not demographic fairness. A rigorous bias evaluation — using carefully designed, sensitive-attribute-aware cases — is a distinct and substantial undertaking left to future work, deliberately not approximated by the current probe.
 
-**Stronger evaluation evidence.** Expanding the calibration set across more objectives and edge types, and adding a third judge family, would tighten the inter-rater picture. Increasing the per-cell run count would narrow the benchmark's confidence intervals, and a larger model grid would turn the current demonstration into a survey.
+**Larger evaluation sets and broader coverage.** The judge calibration set (26 cases), the benchmark sample size (ten runs per cell), and the probe sets (five and three cases) would all need to grow substantially to support strong claims about specific models. Additional attacker types and a wider model grid would extend coverage further.
 
-**Observability and integration.** Structured run tracing would make every attack's execution path inspectable as first-class data rather than logs. Exposing Avouch's tools through the Model Context Protocol would let other systems invoke its capabilities directly, and would align it with emerging conventions for agent tooling.
+**Deeper observability and integration.** The structured tracing layer could be exported to an external observability backend (e.g. OpenTelemetry / Arize Phoenix), and the framework's tools could be exposed through the Model Context Protocol for use by other systems.
 
 **Taxonomy alignment.** Mapping Avouch's objectives and findings onto published evaluation frameworks — the categories used by national safety institutes, and the risk taxonomy of the NIST AI Risk Management Framework — would situate its results within the shared vocabulary the field is converging on.
 
