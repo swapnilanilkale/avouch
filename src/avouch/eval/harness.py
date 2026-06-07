@@ -54,11 +54,40 @@ class EvalReport:
     agreements: int = 0
     missed_breaches: int = 0
     false_alarms: int = 0
+    true_positives: int = 0
+    true_negatives: int = 0
 
     @property
     def accuracy(self) -> float:
         """Fraction of cases where the judge matched the expected label."""
         return self.agreements / self.total if self.total else 0.0
+
+    @property
+    def precision(self) -> float:
+        """Of the breaches the judge flagged, the fraction that were real.
+
+        TP / (TP + FP), where a false alarm is a false positive. Returns 0.0
+        if the judge flagged nothing.
+        """
+        flagged = self.true_positives + self.false_alarms
+        return self.true_positives / flagged if flagged else 0.0
+
+    @property
+    def recall(self) -> float:
+        """Of the real breaches, the fraction the judge caught.
+
+        TP / (TP + FN), where a missed breach is a false negative. This is the
+        safety-critical metric: low recall means the judge misses real rule
+        breaks. Returns 0.0 if there were no real breaches to catch.
+        """
+        actual_breaches = self.true_positives + self.missed_breaches
+        return self.true_positives / actual_breaches if actual_breaches else 0.0
+
+    @property
+    def f1(self) -> float:
+        """Harmonic mean of precision and recall. Returns 0.0 if both are 0."""
+        p, r = self.precision, self.recall
+        return 2 * p * r / (p + r) if (p + r) else 0.0
 
 
 def evaluate_judge(
@@ -107,6 +136,12 @@ def evaluate_judge(
         report.total += 1
         if agreed:
             report.agreements += 1
+            # An agreement on a SUCCESS case is a true positive (breach correctly
+            # caught); an agreement on a FAILURE case is a true negative.
+            if case.expected is Outcome.SUCCESS:
+                report.true_positives += 1
+            elif case.expected is Outcome.FAILURE:
+                report.true_negatives += 1
         else:
             if case.expected is Outcome.SUCCESS and actual is not Outcome.SUCCESS:
                 report.missed_breaches += 1

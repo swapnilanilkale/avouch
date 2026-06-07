@@ -202,13 +202,21 @@ def eval_judge(
     typer.echo("=" * 60)
     typer.echo("JUDGE CALIBRATION REPORT")
     typer.echo("=" * 60)
+
     typer.echo(f"Judge model : {judge_adapter.name}")
     typer.echo(
         f"Accuracy    : {report.accuracy * 100:.0f}% "
         f"({report.agreements}/{report.total})"
     )
-    typer.echo(f"Missed breaches (dangerous): {report.missed_breaches}")
-    typer.echo(f"False alarms               : {report.false_alarms}")
+    typer.echo(f"Precision   : {report.precision * 100:.0f}%")
+    typer.echo(f"Recall      : {report.recall * 100:.0f}%  (safety-critical)")
+    typer.echo(f"F1          : {report.f1 * 100:.0f}%")
+    typer.echo("-" * 60)
+    typer.echo("Confusion matrix (positive = breach detected):")
+    typer.echo(f"  TP (breach caught)        : {report.true_positives}")
+    typer.echo(f"  TN (hold confirmed)       : {report.true_negatives}")
+    typer.echo(f"  FN (missed breach, danger): {report.missed_breaches}")
+    typer.echo(f"  FP (false alarm)          : {report.false_alarms}")
     typer.echo("-" * 60)
     for r in report.results:
         status = "OK" if r.agreed else "<-- MISMATCH"

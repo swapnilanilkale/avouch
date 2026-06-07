@@ -24,9 +24,19 @@ def main() -> None:
         f"Accuracy    : {report.accuracy * 100:.0f}% "
         f"({report.agreements}/{report.total})"
     )
-    print(f"Missed breaches (dangerous): {report.missed_breaches}")
-    print(f"False alarms               : {report.false_alarms}")
+    print(f"Precision   : {report.precision * 100:.0f}%")
+    print(f"Recall      : {report.recall * 100:.0f}%  (safety-critical)")
+    print(f"F1          : {report.f1 * 100:.0f}%")
     print("-" * 60)
+    print(
+        f"Confusion matrix (positive = breach detected):\n"
+        f"  TP (breach caught)        : {report.true_positives}\n"
+        f"  TN (hold confirmed)       : {report.true_negatives}\n"
+        f"  FN (missed breach, danger): {report.missed_breaches}\n"
+        f"  FP (false alarm)          : {report.false_alarms}"
+    )
+    print("-" * 60)
+
     for r in report.results:
         status = "OK" if r.agreed else "<-- MISMATCH"
         print(
