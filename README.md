@@ -89,10 +89,10 @@ poetry run streamlit run streamlit_app.py
 | LangGraph adaptive orchestrator with critic loop | ✅ |
 | Judge calibration harness (golden cases) | ✅ |
 | Streamlit UI | ✅ |
-| Expanded calibration set + inter-judge agreement | 🚧 v2 |
-| Multi-turn conversational attacker | 🚧 v2 |
-| Statistical benchmarking (success rates, CIs) | 🚧 v2 |
-| Structured tracing + MCP server | 🚧 v2 |
+| Expanded calibration set + inter-judge agreement | ✅ v2 |
+| Multi-turn conversational attacker | ✅ v2 |
+| Statistical benchmarking (success rates, CIs) | ✅ v2 |
+| Structured tracing + MCP server | ✅ v2 |
 
 ## Responsible use
 
