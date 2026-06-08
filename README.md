@@ -6,9 +6,9 @@ Avouch automates red-teaming of large language models using a team of
 specialized AI agents, and — unlike most red-teaming tooling — it *validates
 its own judge* against hand-labeled cases before trusting its results.
 
-> 🚧 Actively developed. v1 (below) is complete and working; v2 extensions
+> ✅ Actively developed. v1 (below) is complete and working; v2 extensions
 > (expanded calibration set, multi-turn attacks, statistical benchmarking,
-> tracing, MCP integration) are in progress.
+> tracing, MCP integration) are also completed in subsequent phases.
 
 ## What it does
 
